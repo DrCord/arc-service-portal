@@ -1,0 +1,129 @@
+# bitbucket-pipelines.yml 
+# Invokes lambdas to set the firmware version release hashes in the database.
+# Uploads the deployed firmware files to the S3 bucket the service-resources portal uses.
+# Invalidates the service-resources cloudfront distribution firmware path to force new firmware to be only version available for service-resources portal users.
+image: atlassian/pipelines-awscli
+
+pipelines:
+  branches:
+    master:
+      - step:
+          name: "Tag release"
+          condition:
+            changesets:
+              includePaths:
+                # any changes in docs section
+                - resources/docs/HTML5SideNav/**
+          script:
+            - todays_date=$(date '+%Y-%m-%d');
+            - release_string=${todays_date}_${BITBUCKET_BUILD_NUMBER}
+            - git tag release-${release_string} ${BITBUCKET_COMMIT}
+            - git push origin --tags
+      - step:
+          name: Prepare files for upload to S3
+          condition:
+            changesets:
+              includePaths:
+                # any changes in docs section
+                - resources/docs/HTML5SideNav/**
+          script:
+            - mkdir -p upload/docs
+            - cp -a resources/docs/HTML5SideNav/. upload/docs
+          artifacts:
+            - upload/**
+      - step:
+          name: Deploy to S3 and Invalidate CloudFront Deployment
+          condition:
+            changesets:
+              includePaths:
+                # any changes in docs section
+                - resources/docs/HTML5SideNav/**
+          deployment: Production
+          script:
+            - pipe: atlassian/aws-s3-deploy:0.5.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: us-east-1
+                S3_BUCKET: serverlessrepo-service-resources-prod-s3bucket-1kwxaz8etn3ek
+                LOCAL_PATH: upload
+
+            - pipe: atlassian/aws-cloudfront-invalidate:0.5.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: us-east-1
+                DISTRIBUTION_ID: EEPF0HOQ3ZELC
+                PATHS: /docs/*
+      - step:
+          name: Send Email Notification
+          condition:
+            changesets:
+              includePaths:
+                # any changes in docs section
+                - resources/docs/HTML5SideNav/**
+          script:
+            - pipe: atlassian/email-notify:0.4.4
+              variables:
+                USERNAME: $SES_SMTP_USERNAME
+                PASSWORD: $SES_SMTP_PASSWORD
+                FROM: no-reply@arcimoto.com
+                TO: service-resources-portal-docs-release@arcimoto.com
+                SUBJECT: Service Resources - Docs Release
+                HOST: email-smtp.us-west-2.amazonaws.com
+                BODY_HTML: email_templates/email_body_prod.html
+
+    dev:
+      - step:
+          name: Prepare files for upload to S3
+          condition:
+            changesets:
+              includePaths:
+                # any changes in docs section
+                - resources/docs/HTML5SideNav/**
+          script:
+            - mkdir -p upload/docs
+            - cp -a resources/docs/HTML5SideNav/. upload/docs
+          artifacts:
+            - upload/**
+      - step:
+          name: Deploy to S3 and Invalidate CloudFront Deployment
+          condition:
+            changesets:
+              includePaths:
+                # any changes in docs section
+                - resources/docs/HTML5SideNav/**
+          deployment: Production
+          script:
+            - pipe: atlassian/aws-s3-deploy:0.5.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: us-east-1
+                S3_BUCKET: serverlessrepo-service-resources-dev-s3bucket-1qn54ce79estn
+                LOCAL_PATH: upload
+
+            - pipe: atlassian/aws-cloudfront-invalidate:0.5.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: us-east-1
+                DISTRIBUTION_ID: E1F1X2MTNLRZLM
+                PATHS: /docs/*
+      - step:
+          name: Send Email Notification
+          condition:
+            changesets:
+              includePaths:
+                # any changes in docs section
+                - resources/docs/HTML5SideNav/**
+          script:
+            - pipe: atlassian/email-notify:0.4.4
+              variables:
+                USERNAME: $SES_SMTP_USERNAME
+                PASSWORD: $SES_SMTP_PASSWORD
+                FROM: no-reply@arcimoto.com
+                TO: service-resources-portal-dev-docs-release@arcimoto.com
+                SUBJECT: Service Resources Dev - Docs Release for Approval
+                HOST: email-smtp.us-west-2.amazonaws.com
+                BODY_HTML: email_templates/email_body_dev.html
