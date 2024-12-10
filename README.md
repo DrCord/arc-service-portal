@@ -1,29 +1,21 @@
 # Service Resources User Portal
 
-This repo contains configuration that builds the service-resources portal and the data that goes there.
-
-Currently used at:
-
-https://service-resources.arcimoto.com (Production instance)
-
-https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/stackinfo?filteringText=&filteringStatus=active&viewNested=true&hideStacks=true&stackId=arn%3Aaws%3Acloudformation%3Aus-east-1%3A511596272857%3Astack%2Fservice-resources-auth%2F89ef5950-3e03-11ea-8b2c-0e194195a24f
-
-https://new.service-resources.arcimoto.com (New Replacement Production Instance)
-
-https://console.aws.amazon.com/lambda/home?region=us-east-1#/applications/serverlessrepo-service-resources-prod
-
-https://dev.service-resources.arcimoto.com (Dev Instance)
-
-https://console.aws.amazon.com/lambda/home?region=us-east-1#/applications/serverlessrepo-service-resources-dev
+This repo contains configuration that builds the `service-resources` portal. The portal stores the data for the up to date Arcimoto technical documentation, provided by the Technical Writing department, published by this tool for access by onsite vehicle technicians, via a secured web portal.
 
 ## Details
 
-This repo uses a CloudFormation template to build a interconnected set of lambdas, cognito user pool, cloudfront deployment, iam roles and policies.
+This repo uses an AWS CloudFormation template to build a interconnected set of lambdas, Cognito user pool, IAM and roles and policies. It uses an S3 bucket configured to serve it's data as a website via a secured CloudFront deployment for the onsite vehicle technicians to access the up to date technical documentation.
 
-- The cloudformation template sets up the AWS infrastructure.
+- The CloudFormation template sets up the AWS infrastructure.
 - The HTML structure in the `resources` folder sits in the s3 bucket, with the lambdas authenticating users against the cognito user pool for access control.
 - The content in the `resources/docs` folder is a historical history of the documentation section of the service portal. The Technical Writing department exports that content and commits it as part of the process to push a new version live.
 - The content in the `resources/firmware` folder is an initial push of the firmware modules, but is not updated as part of the current deploy process and should be treated as outdated and not used.
+
+### Instances
+
+https://service-resources.arcimoto.com (Production instance)
+
+https://dev.service-resources.arcimoto.com (Dev Instance)
 
 ## Repo-man
 
@@ -73,11 +65,11 @@ The `firmware` folder is updated automatically via a bitbucket CI pipeline from 
 
 ### Publishing
 
-The content in the Service Resources Portal comes from the `/resources/docs/HTML5SideNav` folder in this repository. When a merge is made to the `dev` or `master` branch the `Documentation` section of `dev.service-resources.arcimoto.com` or `new.service-resources.arcimoto.com` is updated.
+The content in the Service Resources Portal comes from the `/resources/docs/HTML5SideNav` folder in this repository. When a merge is made to the `dev` or `master` branch the `Documentation` section of `dev.service-resources.arcimoto.com` or `service-resources.arcimoto.com` is updated.
 
 #### How to Release (Git Flow)
 
-1. Create a new feature branch from the `dev` branch that is named according to a reasonable stable naming schema. Our common naming schema includes the ticket prefix to link it in Jira and then a short relevant description. Branch names do not allow spaces. Example of Arcimoto common schema: `TEL-123-example-functionality-change`. If this schema does nto work for you, create one that does and stick to it.
+1. Create a new feature branch from the `dev` branch that is named according to a reasonable stable naming schema. Our common naming schema includes the ticket prefix to link it in Jira and then a short relevant description. Branch names do not allow spaces. Example of Arcimoto common schema: `TEL-123-example-functionality-change`. If this schema does not work for you, create one that does and stick to it.
 2. Commit the changes to the feature branch for the revision being published.
 3. Push the feature branch to BitBucket
 4. Create a Pull Request (PR) from the feature branch to `dev`
@@ -114,3 +106,9 @@ You need to be able to perform basic git actions of `clone` a repo, change branc
 ##### MadCap Flare Output
 
 The MadCap Flare output `HTML5SideNav` folder can be output anywhere on your computer but will need to end up within this repo on your computer at `resources/docs` to work correctly. The easiest way to set this up will be to output directly to `resources/docs` within this repo, so it replaces the old content with the new, at which point you can commit the changes. See the `How to Release (Git Flow)` section above for more information.
+
+## Service Resource Portal Users
+
+The login to the production and dev portals are each controlled by a Cognito user pool. IT manages the allowed users based on the list of employed technicians. Each user in a given pool (production or dev) has equal permissions - pure authentication.
+
+The IT and Vehicle Maintenance departments maintain their own documentation about their processes for this system.
